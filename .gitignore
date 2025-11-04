@@ -1,0 +1,6 @@
+.env
+.venv/
+*/*.pdf
+*/*/*.png
+*/*.csv
+__pycache__/
