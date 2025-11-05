@@ -1,5 +1,4 @@
 from typing import List
-from database import Base
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime

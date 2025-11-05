@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    container_name: mataedu_db
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    container_name: mataedu_app
+    depends_on:
+      - db
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:

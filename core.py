@@ -2,6 +2,7 @@ import os
 import mimetypes
 import pandas as pd
 import base64
+from enum import Enum
 
 def encode_file_to_uri(file_path: str) -> str | None:
     
@@ -98,7 +99,7 @@ chain1 = (
     | llm.with_structured_output(Curriculum)
 )
 curriculum_data = dataframe_to_str("./data/curriculum.csv")
-file_data_uri = encode_file_to_uri("./data/기출문제/test2.png")
+file_data_uri = encode_file_to_uri("./data/개별문항/test2.png")
 input_dict_1 = {"curriculum_data": curriculum_data, "file_data_uri": file_data_uri}
 result_1 = chain1.invoke(input_dict_1)
 
@@ -145,21 +146,20 @@ from typing import Optional
 
 class Suggestions(BaseModel):
     """단원 제안 모델"""
-    main_chap: str = Field(description="대단원")
-    mid_chap: str = Field(description="중단원")
-    small_chap: str = Field(description="소단원")
-    descripition: int = Field(description="라벨이 몇번째 후보인지")
-    reason: str = Field(description="해당 라벨을 선택한 이유")
-
-class Levels(BaseModel):
-    """단원 제안 목록 모델"""
+    main_chap1: str = Field(description="첫번째 추천 대단원")
+    mid_chap1: str = Field(description="첫번째 추천 중단원")
+    small_chap1: str = Field(description="첫번째 추천 소단원")
+    reason1: str = Field(description="첫번째 추천 이유")
+    main_chap2: Optional[str] = Field(description="두번째 추천 대단원")
+    mid_chap2: Optional[str] = Field(description="두번째 추천 중단원")
+    small_chap2: Optional[str] = Field(description="두번째 추천 소단원")
+    reason2: Optional[str] = Field(description="두번째 추천 이유")
 
 
 chain2 = (
     RunnableLambda(get_stage)
     | llm.with_structured_output(Suggestions)
 )
-
 
 input_dict_2 = {"grade": result_1.grade, 
                 "subject":result_1.subject,
@@ -172,13 +172,20 @@ input_dict_2 = {"grade": result_1.grade,
 result_2 = chain2.invoke(input_dict_2)
 
 
-
 def get_metadata(input: dict) -> List[HumanMessage]:
+
+    label1 = (f"{input['main_chap']}>{input['mid_chap']}>{input['small_chap']}")
+    prompt_inject = ""
+    if input["main_chap2"]:
+        label2 = (f"{input['main_chap2']}>{input['mid_chap2']}>{input['small_chap2']}")
+        prompt_inject = "두번째로 가능성 있는 라벨로는 '{label2}'이 추천되었습니다."
+    
+
     system_prompt = f"""
     당신은 교육 콘텐츠 분석가입니다. 
     첨부된 파일은 {input['grade']} 과정의 {input['subject']} 과목의 문제로 분석되었습니다.
-    가장 가능성 있는 라벨로는 {input['main_chap']}>{input['mid_chap']}>{input['small_chap']}이 추천되었습니다.
-    
+    가장 가능성 있는 라벨로는 {label1}이 추천되었습니다.
+    {prompt_inject}
     첨부된 파일의 내용을 분석하여 다음 메타 데이터를 라벨링해 주세요.
 
     1. 난이도
@@ -202,6 +209,126 @@ def get_metadata(input: dict) -> List[HumanMessage]:
 
     return [SystemMessage(content=system_prompt), message]
 
+class DiffEnum(str, Enum):
+    EASY="하"
+    INTERMEDIATE="중"
+    HARD ="상"
+
+class ItemTypeEnum(str, Enum):
+    MULTIPLE_CHOICE="5지선다"
+    COMPLEX_CHOICE="조합형"
+    SHORT_ANSWER="단답형"
+    ESSAY_ANSWER="서술형"
 
 class Metadata(BaseModel):
-    difficulty: str = Field(description="")
+    difficulty: DiffEnum = Field(description="난이도 (예: 상, 중, 하)")
+    difficulty_reason: str = Field(description="난이도 평가 이유")
+    item_type: ItemTypeEnum = Field(description="문제 유형 (예: 5지선다, 조합형, 단답형, 서술형)")
+    points: int = Field(description="배점")
+    intent: str = Field(description="출제의도")
+    keywords: str = Field(description="핵심 키워드 (예: '삼각함수, 로그')")
+    content: str = Field(description="파일에서 인식된 문제 텍스트 전체")
+
+chain3 = (
+    RunnableLambda(get_metadata)
+    | llm.with_structured_output(Metadata)
+)
+
+input_dict_3 = {"grade": result_1.grade, 
+                "subject":result_1.subject,
+                "main_chap": result_2.main_chap1,
+                "mid_chap": result_2.mid_chap1,
+                "small_chap": result_2.small_chap1,
+                "main_chap2": result_2.main_chap2,
+                "mid_chap2": result_2.mid_chap2,
+                "small_chap2": result_2.small_chap2,
+                "curriculum_data": curriculum_data, 
+                "file_data_uri": file_data_uri}
+result_3 = chain3.invoke(input_dict_3)
+print(result_3)
+
+
+#======
+from sqlalchemy import create_engine, Column, Integer, String
+import sqlalchemy
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+DATABASE_URL = config.connection_string
+
+engine = create_engine(DATABASE_URL, echo=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+class Base(DeclarativeBase):
+    pass
+
+from typing import List
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Enum as SQEnum
+
+class Item(Base):
+    """개별 문제 테이블"""
+
+    __tablename__ = "item"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_time: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now(),
+        nullable=False
+    )
+    grade: Mapped[str] = mapped_column(String, nullable=False)
+    subject: Mapped[str] = mapped_column(String)
+    main_chap1: Mapped[str] = mapped_column(String)
+    mid_chap1: Mapped[str] = mapped_column(String)
+    small_chap1: Mapped[str] = mapped_column(String)
+    reason1: Mapped[str] = mapped_column(String)
+    main_chap2: Mapped[str] = mapped_column(String)
+    mid_chap2: Mapped[str] = mapped_column(String)
+    small_chap2: Mapped[str] = mapped_column(String)
+    reason2: Mapped[str] = mapped_column(String)
+
+    difficulty: Mapped[DiffEnum] = mapped_column(
+        SQEnum(DiffEnum),
+        nullable=False
+    )
+    difficulty_reason: Mapped[str] = mapped_column(String, nullable=False)
+    item_type: Mapped[ItemTypeEnum] = mapped_column(
+        SQEnum(ItemTypeEnum),
+        nullable=False
+    )
+    points: Mapped[int] = mapped_column(Integer)
+    intent: Mapped[str] = mapped_column(String)
+    keywords: Mapped[str] = mapped_column(String)
+    content: Mapped[str] = mapped_column(String)
+
+Base.metadata.create_all(bind=engine)
+
+new_item = Item(
+    grade = result_1.grade,
+    subject = result_1.subject,
+
+    main_chap1 = result_2.main_chap1,
+    mid_chap1 = result_2.mid_chap1,
+    small_chap1 = result_2.small_chap1,
+    reason1 = result_2.reason1,
+
+    main_chap2 = result_2.main_chap2,
+    mid_chap2 = result_2.mid_chap2,
+    small_chap2 = result_2.small_chap2,
+    reason2 = result_2.reason2,
+
+    difficulty = result_3.difficulty,
+    difficulty_reason = result_3.difficulty_reason,
+    item_type = result_3.item_type,
+    points = result_3.points,
+    intent = result_3.intent,
+    keywords = result_3.keywords,
+    content = result_3.content
+)
+
+with SessionLocal() as session:
+    session.add(new_item)
+    session.commit()
