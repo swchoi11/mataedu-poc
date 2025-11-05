@@ -73,13 +73,3 @@ class Curriculum(Base):
     small_chap_num = Column(Integer, nullable=True)
     small_chap = Column(String, nullable=True)
 
-class ItemMeta(Base):
-    __tablename__ = "item_meta"
-
-    id = Column(Integer, primary_key=True, index=True)
-    curriculum_id = Column(Integer)
-    difficulty = Column(String)
-    intent = Column(Text)
-    item_type = Column(String)
-    points = Column(Integer)
-    
