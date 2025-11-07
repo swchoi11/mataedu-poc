@@ -1,3 +1,9 @@
+from typing import List
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Enum as SQEnum
 
 from sqlalchemy import create_engine, Column, Integer, String
 import sqlalchemy
@@ -11,12 +17,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
-from typing import List
-from datetime import datetime
-
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Enum as SQEnum
 
 
 Base.metadata.create_all(bind=engine)

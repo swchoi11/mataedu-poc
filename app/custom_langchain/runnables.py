@@ -3,7 +3,9 @@ from langchain_core.runnables import (
     RunnableConfig
 )
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import PydanticOutputParser
 from typing import List
+from custom_langchain.models import QuestionList
 
 def get_grade(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     conf = config["configurable"]
@@ -116,5 +118,33 @@ def get_metadata(input: dict, config: RunnableConfig) -> List[HumanMessage]:
 
     return [SystemMessage(content=system_prompt), message]
 
+# output_parser 정의
+output_parser = PydanticOutputParser(pydantic_object=QuestionList)
 
+def get_poly(input: dict) -> List[HumanMessage]:
+    format_instructions = output_parser.get_format_instructions()
+    system_prompt = f"""
+    당신은 전문적인 문서 레이아웃 분석가입니다.
+    첨부된 이미지는 2단(two-column)으로 구성될 수 있는 시험문제지입니다.
+    시험문제지에는 분석해야하는 개별 문항과 함께, 시험 과목, 과정과 관련된 다른 정보들, 페이지 번호 등이 함께 존재합니다. 
 
+    당신의 임무는 페이지에 있는 **모든 개별 문항**만을 식별하는 것입니다.
+    다른 텍스트나 설명 없이, 반드시 다음 JSON 스키마를 준수하는 단일 JSON 객체만을 반환해야합니다.
+    {format_instructions}
+    """
+    
+    # [수정] 전역 변수가 아닌, input 딕셔너리에서 file_data를 가져옴
+    file_data_from_input = input["file_data"]
+
+    message = HumanMessage(
+        content = [
+            {"type": "text",
+            "text":f"이 이미지에서 모든 문제 영역을 분석하고, 요청한 포맷 지침({format_instructions})에 정확히 맞춰 JSON을 반환해주세요."},
+            {
+                "type": "image_url",
+                # [수정] 함수 내부 변수를 사용
+                "image_url": {"url": file_data_from_input} 
+            }
+        ]
+    )
+    return [SystemMessage(content=system_prompt), message]

@@ -14,4 +14,11 @@ class Config:
         
         self.connection_string = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:5432/{self.POSTGRES_DB}"
 
+        self.MINIO_ROOT_USER = os.getenv("MINIO_ROOT_USER")
+        self.MINIO_ROOT_PASSWORD = os.getenv("MINIO_ROOT_PASSWORD")
+        self.MINIO_BUCKET = os.getenv("MINIO_BUCKET_NAME")
+
+        self.minio_connection_string = "http://minio:9000"
+
+
 config = Config()
