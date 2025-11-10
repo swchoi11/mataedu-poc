@@ -34,8 +34,12 @@ def process_item(request: ItemAnalysisRequest):
     # 이미지 데이터 인코딩해서 입력 -> 체인 안으로 삽입할 필요
     file_data = encode_image(request.file_path)
 
+    # 성취기준 데이터 삽입
+    criteria_data = dataframe_to_str('./app/교육과정성취기준.csv')
+
     result = process_item_chain.invoke(
-        {"file_data": file_data},
+        {"file_data": file_data,
+        "criteria": criteria_data},
         config={"configurable": common_data}
     )
 
@@ -48,9 +52,18 @@ def process_item(request: ItemAnalysisRequest):
         difficulty_reason = result['difficulty_reason'],
         item_type = result['item_type'],
         points = result['points'],
-        intent = result['intent'],
         keywords = result['keywords'],
-        content = result['content']
+        content = result['content'],
+        sector1= result['sector1'],
+        criteria1= result['criteria1'],
+        criteria_explanation1= result['criteria_exp1'],
+        sector2= result['sector2'],
+        criteria2= result['criteria2'],
+        criteria_explanation2= result['criteria_exp2'],
+        sector3= result['sector3'],
+        criteria3= result['criteria3'],
+        criteria_explanation3= result['criteria_exp3'],
+
     )
 
     return ItemAnalysisRepsonse(

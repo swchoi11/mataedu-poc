@@ -24,6 +24,18 @@ class Suggestions(BaseModel):
     small_chap2: Optional[str] = Field(description="두번째 추천 소단원")
     reason2: Optional[str] = Field(description="두번째 추천 이유")
 
+class Criteria(PydanticV2BaseModel):
+    sector1: str = PydanticV2Field(description="수행과정1")
+    criteria1: str = PydanticV2Field(description="수행과정1에서 학생이 취득해야하는 성취 기준")
+    criteria_exp1: str = PydanticV2Field(description="성취 기준1에 대한 구체적 설명")
+    sector2: Optional[str] = PydanticV2Field(description="수행과정2")
+    criteria2: Optional[str] = PydanticV2Field(description="수행과정2에서 학생이 취득해야하는 성취 기준")
+    criteria_exp2: Optional[str] = PydanticV2Field(description="성취 기준2에 대한 구체적 설명")
+    sector3: Optional[str] = PydanticV2Field(description="수행과정3")
+    criteria3: Optional[str] = PydanticV2Field(description="수행과정3에서 학생이 취득해야하는 성취 기준")
+    criteria_exp3: Optional[str] = PydanticV2Field(description="성취 기준3에 대한 구체적 설명")
+
+
 class DiffEnum(str, Enum):
     EASY="하"
     INTERMEDIATE="중"
@@ -40,7 +52,6 @@ class Metadata(BaseModel):
     difficulty_reason: str = Field(description="난이도 평가 이유")
     item_type: ItemTypeEnum = Field(description="문제 유형 (예: 5지선다, 조합형, 단답형, 서술형)")
     points: int = Field(description="배점")
-    intent: str = Field(description="출제의도")
     keywords: str = Field(description="핵심 키워드 (예: '삼각함수, 로그')")
     content: str = Field(description="파일에서 인식된 문제 텍스트 전체")
 

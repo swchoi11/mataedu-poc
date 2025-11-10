@@ -32,7 +32,6 @@ class Metadata:
     difficulty_reason: str
     item_type: str
     points: int
-    intent: str
     keywords: str
     content: str
 

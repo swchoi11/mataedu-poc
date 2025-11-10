@@ -79,6 +79,52 @@ def get_stage(input: dict, config: RunnableConfig) -> List[HumanMessage]:
 
     return [SystemMessage(content=system_prompt), message]
 
+def get_criteria(input: dict, config: RunnableConfig) -> List[HumanMessage]:
+    file_data = input["file_data"]
+    curri = input["curriculum"]
+    sug = input["suggestions"]
+
+    criteria_list = input["criteria"]
+
+    label1 = (f"{sug.main_chap1}>{sug.mid_chap1}>{sug.small_chap1}")
+    prompt_inject = ""
+    if sug.main_chap2:
+        label2 = (f"{sug.main_chap2}>{sug.mid_chap2}>{sug.small_chap2}")
+        prompt_inject = "두번째로 가능성 있는 라벨로는 '{label2}'이 추천되었습니다."
+
+
+    system_prompt = f"""
+    당신은 교육 콘텐츠 분석가입니다. 
+    첨부된 파일은 {curri.grade} 과정의 {curri.subject} 과목의 문제로 분석되었습니다.
+    가장 가능성 있는 라벨로는 {label1}이 추천되었습니다.
+    {prompt_inject}첨부된 파일의 내용을 분석하여 이 문제가 학생들에게서 평가하고자 하는 **수행과정(sector), 성취기준(criteria), 성취기준 해설(criteria_explanation)**을 추출해주세요.
+
+    - **최대 3개**까지 추출할 수 있으며, **반드시 1개 이상**은 있어야 합니다.
+    - 추출된 내용은 반드시 아래의 '성취기준 목록'에 있는 내용과 일치해야 합니다.
+    - Pydantic 스키마에 맞춰 'sector1', 'criteria1', 'criteria_exp1', 'sector2', 'criteria2', 'criteria_exp2', 'sector3', 'criteria3', 'criteria_exp3' 필드를 채워주세요.
+    - 만약 2번째나 3번째 성취기준이 없다면 해당 필드(sector2, criteria2...)는 null 또는 빈 값으로 두어야 합니다.
+
+    ----
+    성취 기준 목록 :
+    {criteria_list}
+    """
+
+    message = HumanMessage(
+        content = [
+            {
+                "type": "image_url",
+                "image_url": {"url": file_data}
+
+            }
+        ]
+    )
+
+    return [SystemMessage(content=system_prompt), message]
+
+
+
+
+
 def get_metadata(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     file_data = input["file_data"]
     curri = input["curriculum"]
