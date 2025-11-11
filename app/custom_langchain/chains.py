@@ -4,13 +4,15 @@ from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnableP
 
 from config import config
 from custom_langchain.models import Curriculum, Suggestions,Metadata, QuestionList, Criteria
-from custom_langchain.runnables import get_grade, get_metadata, get_stage, get_poly, output_parser, get_criteria
+from custom_langchain.runnables import get_grade_subject, get_problem_metadata, get_subject_unit, get_problem_intent, get_poly, output_parser
 
 llm = ChatGoogleGenerativeAI(
     model = config.GEMINI_MODEL,
     google_api_key = config.GEMINI_API_KEY,
     temperature = 0
 )
+
+
 
 # 시험지 처리 체인
 process_exam_chain = (
@@ -22,22 +24,22 @@ process_exam_chain = (
 
 # 메타 분석 체인
 grade_extraction = (
-    RunnableLambda(get_grade)
+    RunnableLambda(get_grade_subject)
     | llm.with_structured_output(Curriculum)
 )
 
 curriculum_extraction = (
-    RunnableLambda(get_stage)
+    RunnableLambda(get_subject_unit)
     | llm.with_structured_output(Suggestions)
 )
 
 criteria_extraction = (
-    RunnableLambda(get_criteria)
+    RunnableLambda(get_problem_intent)
     | llm.with_structured_output(Criteria)
 )
 
 metadata_extraction = (
-    RunnableLambda(get_metadata)
+    RunnableLambda(get_problem_metadata)
     | llm.with_structured_output(Metadata)
 )
 
@@ -48,7 +50,7 @@ def format_final_output(input_dict: dict) -> dict:
     metadata = input_dict["metadata"]
     original_curriculum = input_dict["curriculum"]
     suggestions = input_dict["suggestions"]
-    criterias = input_dict.get("criterias")
+    criterias = input_dict["criterias"]
 
     grade=original_curriculum.grade
     subject=original_curriculum.subject
@@ -59,8 +61,6 @@ def format_final_output(input_dict: dict) -> dict:
     if suggestions.main_chap2 and suggestions.mid_chap2 and suggestions.small_chap2:
         recommendation2 = f"{suggestions.main_chap2}>{suggestions.mid_chap2}>{suggestions.small_chap2}"
     
-    print(criterias)
-
     return {
         "grade": grade,
         "subject": subject,
@@ -73,56 +73,18 @@ def format_final_output(input_dict: dict) -> dict:
         "keywords": metadata.keywords,
         "content": metadata.content,
 
-        "sector1": getattr(criterias, "sector1", None),
-        "criteria1": getattr(criterias, "criteria1", None),
-        "criteria_explanation1": getattr(criterias, "criteria_exp1", None),
-        "sector2": getattr(criterias, "sector2", None),
-        "criteria2": getattr(criterias, "criteria2", None),
-        "criteria_explanation2": getattr(criterias, "criteria_exp2", None),
-        "sector3": getattr(criterias, "sector3", None),
-        "criteria3": getattr(criterias, "criteria3", None),
-        "criteria_explanation3": getattr(criterias, "criteria_exp3", None),
+        "sector1": criterias.sector1,
+        "criteria1": criterias.criteria1,
+        "criteria_explanation1": criterias.criteria_explanation1,
+        "sector2": criterias.sector2,
+        "criteria2": criterias.criteria2,
+        "criteria_explanation2": criterias.criteria_explanation2,
+        "sector3": criterias.sector3,
+        "criteria3": criterias.criteria3,
+        "criteria_explanation3": criterias.criteria_explanation3,
 
     }
 
-
-# step1 = RunnableParallel(
-#     curriculum = grade_extraction,
-#     passthrough = RunnablePassthrough()
-# )
-
-# format_for_step2 = RunnableLambda(
-#     lambda x: {
-#         "file_data": x["passthrough"]["file_data"],
-#         "curriculum": x["curriculum"]              
-#     }
-# )
-
-# step2 = RunnableParallel(
-#     suggestions = curriculum_extraction,
-#     passthrough = RunnablePassthrough()
-# )
-
-# format_for_step3 = RunnableLambda(
-#     lambda x: {
-#         **x["passthrough"],
-#         "suggestions": x["suggestions"]
-#     }
-# )
-
-
-
-# process_item_chain = (
-#     step1
-#     | format_for_step2
-#     | step2
-#     | format_for_step3
-#     | RunnableParallel(
-#         metadata = metadata_extraction,
-#         passthrough_data = RunnablePassthrough()
-#         )
-#     | RunnableLambda(format_final_output)
-#     )
 
 process_item_chain = RunnablePassthrough() | (
     # 1. 커리큘럼 키를 딕셔너리에 추가

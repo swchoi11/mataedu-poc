@@ -23,7 +23,7 @@ class ItemAnalysisRequest:
     query: Optional[str] = None
 
 @dataclass
-class Metadata:
+class MetadataResult:
     grade: str
     subject: str
     curriculum1: str
@@ -34,9 +34,18 @@ class Metadata:
     points: int
     keywords: str
     content: str
+    sector1: str
+    criteria1: str
+    creteria_explanation1: str
+    sector2: str
+    criteria2: str
+    creteria_explanation2: str
+    sector3: str
+    criteria3: str
+    creteria_explanation3: str
 
 @dataclass
 class ItemAnalysisRepsonse:
     item_id: str
-    metadata: Metadata
+    metadata: MetadataResult
 

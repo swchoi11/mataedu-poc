@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
-from models import ExamProcessRequest, ExamProcessResponse, ExamAnalysisResponse, ItemAnalysisRepsonse, ItemAnalysisRequest, Metadata
+from models import ExamProcessRequest, ExamProcessResponse, ExamAnalysisResponse, ItemAnalysisRepsonse, ItemAnalysisRequest, MetadataResult
 from custom_langchain.chains import process_exam_chain, process_item_chain
 from utils.process_image import encode_image, dataframe_to_str
 import uuid
@@ -39,36 +39,15 @@ def process_item(request: ItemAnalysisRequest):
 
     result = process_item_chain.invoke(
         {"file_data": file_data,
-        "criteria": criteria_data},
+        "criteria_data": criteria_data},
         config={"configurable": common_data}
     )
 
-    result_meta = Metadata(
-        grade = result['grade'],
-        subject = result['subject'],
-        curriculum1 = result['curriculum1'],
-        curriculum2 = result['curriculum2'],
-        difficulty = result['difficulty'],
-        difficulty_reason = result['difficulty_reason'],
-        item_type = result['item_type'],
-        points = result['points'],
-        keywords = result['keywords'],
-        content = result['content'],
-        sector1= result['sector1'],
-        criteria1= result['criteria1'],
-        criteria_explanation1= result['criteria_exp1'],
-        sector2= result['sector2'],
-        criteria2= result['criteria2'],
-        criteria_explanation2= result['criteria_exp2'],
-        sector3= result['sector3'],
-        criteria3= result['criteria3'],
-        criteria_explanation3= result['criteria_exp3'],
 
-    )
 
     return ItemAnalysisRepsonse(
         item_id=str(uuid.uuid4()),
-        metadata=result_meta
+        metadata=result
     )
 
 

@@ -27,13 +27,13 @@ class Suggestions(BaseModel):
 class Criteria(PydanticV2BaseModel):
     sector1: str = PydanticV2Field(description="수행과정1")
     criteria1: str = PydanticV2Field(description="수행과정1에서 학생이 취득해야하는 성취 기준")
-    criteria_exp1: str = PydanticV2Field(description="성취 기준1에 대한 구체적 설명")
+    criteria_explanation1: str = PydanticV2Field(description="성취 기준1에 대한 구체적 설명")
     sector2: Optional[str] = PydanticV2Field(description="수행과정2")
     criteria2: Optional[str] = PydanticV2Field(description="수행과정2에서 학생이 취득해야하는 성취 기준")
-    criteria_exp2: Optional[str] = PydanticV2Field(description="성취 기준2에 대한 구체적 설명")
+    criteria_explanation2: Optional[str] = PydanticV2Field(description="성취 기준2에 대한 구체적 설명")
     sector3: Optional[str] = PydanticV2Field(description="수행과정3")
     criteria3: Optional[str] = PydanticV2Field(description="수행과정3에서 학생이 취득해야하는 성취 기준")
-    criteria_exp3: Optional[str] = PydanticV2Field(description="성취 기준3에 대한 구체적 설명")
+    criteria_explanation3: Optional[str] = PydanticV2Field(description="성취 기준3에 대한 구체적 설명")
 
 
 class DiffEnum(str, Enum):

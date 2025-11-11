@@ -10,12 +10,14 @@ from typing import List
 from langchain.pydantic_v1 import BaseModel, Field
 
 
-class Item(Base):
+class Problem(Base):
     """개별 문제 테이블"""
 
-    __tablename__ = "item"
+    __tablename__ = "problem"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    exam_id: Mapped[int] = mapped_column(Intger, foreign_key=True)
+    
     created_time: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.now(),
@@ -66,10 +68,18 @@ class Curriculum(Base):
     id  = Column(Integer, primary_key=True, index=True)
     grade = Column(String, nullable=False)
     subject = Column(String, nullable=False)
-    main_chap_num = Column(Integer, nullable=False)
-    main_chap = Column(String, nullable=False)
-    mid_chap_num = Column(Integer, nullable=True)
-    mid_chap = Column(String, nullable=True)
-    small_chap_num = Column(Integer, nullable=True)
-    small_chap = Column(String, nullable=True)
+    no_main_chapter = Column(Integer, nullable=False)
+    main_chapter = Column(String, nullable=False)
+    no_sub_chapter = Column(Integer, nullable=True)
+    sub_chapter = Column(String, nullable=True)
+    no_lesson_chapter = Column(Integer, nullable=True)
+    lesson_chapter = Column(String, nullable=True)
+
+class SubjectUnit(Base):
+    __tablename__="subject_unit"
+
+    id = Column(Integer, primary_key=True)
+    sector = Column(String, nullable=False)
+    unit = Column(String, nullable=False)
+    unit_exp = Column(String, nullable=False)
 

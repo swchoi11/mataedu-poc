@@ -7,7 +7,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from typing import List
 from custom_langchain.models import QuestionList
 
-def get_grade(input: dict, config: RunnableConfig) -> List[HumanMessage]:
+def get_grade_subject(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     conf = config["configurable"]
 
     file_data = input["file_data"]
@@ -37,7 +37,7 @@ def get_grade(input: dict, config: RunnableConfig) -> List[HumanMessage]:
 
     return [SystemMessage(content=system_prompt), message]
 
-def get_stage(input: dict, config: RunnableConfig) -> List[HumanMessage]:
+def get_subject_unit(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     conf = config["configurable"]
 
     file_data = input["file_data"]
@@ -79,12 +79,12 @@ def get_stage(input: dict, config: RunnableConfig) -> List[HumanMessage]:
 
     return [SystemMessage(content=system_prompt), message]
 
-def get_criteria(input: dict, config: RunnableConfig) -> List[HumanMessage]:
+def get_problem_intent(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     file_data = input["file_data"]
     curri = input["curriculum"]
     sug = input["suggestions"]
 
-    criteria_list = input["criteria"]
+    criteria_data = input["criteria_data"]
 
     label1 = (f"{sug.main_chap1}>{sug.mid_chap1}>{sug.small_chap1}")
     prompt_inject = ""
@@ -101,12 +101,12 @@ def get_criteria(input: dict, config: RunnableConfig) -> List[HumanMessage]:
 
     - **최대 3개**까지 추출할 수 있으며, **반드시 1개 이상**은 있어야 합니다.
     - 추출된 내용은 반드시 아래의 '성취기준 목록'에 있는 내용과 일치해야 합니다.
-    - Pydantic 스키마에 맞춰 'sector1', 'criteria1', 'criteria_exp1', 'sector2', 'criteria2', 'criteria_exp2', 'sector3', 'criteria3', 'criteria_exp3' 필드를 채워주세요.
+    - Pydantic 스키마에 맞춰 'sector1', 'criteria1', 'criteria_explanation1', 'sector2', 'criteria2', 'criteria_explanation2', 'sector3', 'criteria3', 'criteria_explanation3' 필드를 채워주세요.
     - 만약 2번째나 3번째 성취기준이 없다면 해당 필드(sector2, criteria2...)는 null 또는 빈 값으로 두어야 합니다.
 
     ----
     성취 기준 목록 :
-    {criteria_list}
+    {criteria_data}
     """
 
     message = HumanMessage(
@@ -121,11 +121,7 @@ def get_criteria(input: dict, config: RunnableConfig) -> List[HumanMessage]:
 
     return [SystemMessage(content=system_prompt), message]
 
-
-
-
-
-def get_metadata(input: dict, config: RunnableConfig) -> List[HumanMessage]:
+def get_problem_metadata(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     file_data = input["file_data"]
     curri = input["curriculum"]
     sug = input["suggestions"]
@@ -147,9 +143,8 @@ def get_metadata(input: dict, config: RunnableConfig) -> List[HumanMessage]:
     2. 난이도 평가 이유
     3. 문제 유형
     4. 배점 (확인할 수 없는 경우 0)
-    5. 출제 의도 : 학생이 어떤 개념을 알아야 하는지
-    6. 핵심 키워드
-    7. 파일에서 인식된 문제 텍스트 전체    
+    5. 핵심 키워드
+    6. 파일에서 인식된 문제 텍스트 전체    
     """
 
     message = HumanMessage(
