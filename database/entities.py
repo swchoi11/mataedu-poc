@@ -1,13 +1,8 @@
 from typing import List
 from datetime import datetime
-from database import Base
+from database.database import Base
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
-from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
-from typing import List
-
-
-from langchain.pydantic_v1 import BaseModel, Field
 
 
 class Problem(Base):
@@ -15,7 +10,44 @@ class Problem(Base):
     __tablename__ = "problem"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    exam_id: Mapped[int] = mapped_column(Integer)
+    
+    created_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(), nullable=False)
+    grade: Mapped[str] = mapped_column(String, nullable=False)
+    subject: Mapped[str] = mapped_column(String, nullable=False)
+    
+    main_chapter_1: Mapped[str] = mapped_column(String, nullable=False)
+    sub_chapter_1: Mapped[str] = mapped_column(String, nullable=False)
+    lesson_chapter_1: Mapped[str] = mapped_column(String, nullable=False)
+    reason_1: Mapped[str] = mapped_column(String, nullable=False)
+    
+    main_chapter_2: Mapped[str] = mapped_column(String, nullable=False)
+    sub_chapter_2: Mapped[str] = mapped_column(String, nullable=False)
+    lesson_chapter_2: Mapped[str] = mapped_column(String, nullable=False)
+    reason_2: Mapped[str] = mapped_column(String, nullable=False)
+    
+    difficulty: Mapped[str] = mapped_column(String, nullable=False)
+    difficulty_reason: Mapped[str] = mapped_column(String, nullable=False)
+    
+    item_type: Mapped[str] = mapped_column(String, nullable=False)
+    points: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    keywords: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    
+    sector_1: Mapped[str] = mapped_column(String, nullable=False)
+    unit_1: Mapped[str] = mapped_column(String, nullable=False)
+    unit_exp_1: Mapped[str] = mapped_column(String, nullable=False)
 
+    sector_2: Mapped[str] = mapped_column(String, nullable=False)
+    unit_2: Mapped[str] = mapped_column(String, nullable=False)
+    unit_exp_2: Mapped[str] = mapped_column(String, nullable=False)
+
+    sector_3: Mapped[str] = mapped_column(String, nullable=False)
+    unit_3: Mapped[str] = mapped_column(String, nullable=False)
+    unit_exp_3: Mapped[str] = mapped_column(String, nullable=False)
+  
+    
 class Exam(Base):
     """시험지 테이블"""
 

@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16
+    container_name: mataedu_db
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./data/curriculum.csv:/docker-entrypoint-initdb.d/curriculum.csv
+      - ./data/교육과정성취기준.csv:/docker-entrypoint-initdb.d/교육과정성취기준.csv
+    ports:
+      - "5432:5432"
+
+  minio:
+    image: minio/minio
+    container_name: mataedu_minio
+    env_file:
+      - .env
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+
+  app:
+    build: .
+    container_name: mataedu_app
+    depends_on:
+      - db
+      - minio
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
+  minio_data: 

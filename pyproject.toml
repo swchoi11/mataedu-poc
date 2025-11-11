@@ -1,0 +1,24 @@
+[project]
+name = "mataedu"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.40.67",
+    "dotenv>=0.9.9",
+    "fastapi>=0.121.0",
+    "langchain==0.2.0",
+    "langchain-google-genai>=1.0.0,<1.1.0",
+    "numpy>=1.26.4",
+    "opencv-python-headless>=4.11.0.86",
+    "paddleocr>=3.3.1",
+    "paddlepaddle>=3.2.1",
+    "pandas>=2.3.3",
+    "pillow>=12.0.0",
+    "psycopg2-binary>=2.9.11",
+    "pymupdf>=1.26.6",
+    "requests>=2.32.5",
+    "sqlalchemy>=2.0.44",
+    "uvicorn>=0.38.0",
+]
