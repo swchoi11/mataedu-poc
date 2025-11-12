@@ -3,40 +3,66 @@ services:
     image: postgres:16
     container_name: mataedu_db
     env_file:
-      - .env
+      - backend/.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./data/curriculum.csv:/docker-entrypoint-initdb.d/curriculum.csv
-      - ./data/교육과정성취기준.csv:/docker-entrypoint-initdb.d/교육과정성취기준.csv
+      - ./backend/data/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/data/curriculum.csv:/docker-entrypoint-initdb.d/curriculum.csv
+      - ./backend/data/교육과정성취기준.csv:/docker-entrypoint-initdb.d/교육과정성취기준.csv
     ports:
       - "5432:5432"
+    networks:
+      - mataedu-network
 
   minio:
     image: minio/minio
     container_name: mataedu_minio
     env_file:
-      - .env
+      - backend/.env
     volumes:
       - minio_data:/data
     ports:
       - "9000:9000"
       - "9001:9001"
     command: server /data --console-address ":9001"
+    networks:
+      - mataedu-network
 
-  app:
-    build: .
-    container_name: mataedu_app
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mataedu_backend
     depends_on:
       - db
       - minio
     env_file:
-      - .env
+      - backend/.env
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./backend:/app
+    networks:
+      - mataedu-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mataedu_frontend
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./frontend:/app
+    networks:
+      - mataedu-network
 
 volumes:
   postgres_data:
-  minio_data: 
+  minio_data:
+
+networks:
+  mataedu-network:
+    driver: bridge 

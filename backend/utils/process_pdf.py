@@ -10,9 +10,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import PydanticOutputParser
-from components import correct_box_with_analysis
+from utils.process_image import correct_box_with_analysis
 import boto3
 from config import config
+
 storage_client = boto3.client(
     's3',
     endpoint_url = config.minio_connection_string,
@@ -21,19 +22,17 @@ storage_client = boto3.client(
     config = boto3.session.Config(signature_version='s3v4')
 )
 
-# 버킷이 존재하는지 확인하는 방법
 try: 
     storage_client.head_bucket(Bucket=config.MINIO_BUCKET)
 except Exception:
     storage_client.create_bucket(Bucket=config.MINIO_BUCKET)
 
-from components import encode_pil_image_to_base64
-from chains import poly_extraction
+from utils.process_image import encode_pil_image_to_base64
+from custom_langchain.chains import poly_extraction
 
 from config import config
 
-# --- 1. PDF -> 이미지 제너레이터 (제공된 코드 수정) ---
-def pdf_to_image_generator(pdf_path: str, dpi: int = 300) -> Generator[Image.Image, None, None]: 
+def page_to_image_generator(pdf_path: str, dpi: int = 300) -> Generator[Image.Image, None, None]: 
     pages = None # finally 블록에서 참조하기 위해 외부에 선언
     try: 
         pages = fitz.open(pdf_path)
@@ -59,19 +58,16 @@ def pdf_to_image_generator(pdf_path: str, dpi: int = 300) -> Generator[Image.Ima
         if pages:
             pages.close()
 
-def process_pdf_document(pdf_file_path: str, output_dir: str = "debug_crops"):
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+def image_generator(pdf_file_path: str, original_file_name: str) -> Generator[dict, None, None]:
         
-    image_generator = pdf_to_image_generator(pdf_file_path, dpi=300)
+    page_generator = page_to_image_generator(pdf_file_path, dpi=300)
     
     cropped_images = []
     total_crops_saved = 0
     
     print(f"--- PDF 처리 시작: {pdf_file_path} ---")
 
-    for page_index, pil_img in enumerate(image_generator):
+    for page_index, pil_img in enumerate(page_generator):
         page_num = page_index + 1
         print(f"\n--- 페이지 {page_num} 처리 시작 ---")
         
@@ -88,8 +84,6 @@ def process_pdf_document(pdf_file_path: str, output_dir: str = "debug_crops"):
 
             print(f"페이지 {page_num}: {len(result.questions)}개 영역 감지. 보정 및 크롭 시작...")
             
-            # --- [핵심 수정 1] ---
-            # 모든 '원본' 픽셀 좌표 리스트를 먼저 계산
             image_width, image_height = pil_img.size
             gemini_pixel_boxes = []
             for q_box in result.questions:
@@ -103,10 +97,7 @@ def process_pdf_document(pdf_file_path: str, output_dir: str = "debug_crops"):
 
             # 공백 분석을 위해 이미지를 Grayscale로 변환 (한 번만)
             pil_img_l = pil_img.convert("L")
-            # --- [핵심 수정 끝] ---
 
-            # --- [핵심 수정 2] ---
-            # 각 박스를 순회하며 보정 및 크롭
             for i in range(len(gemini_pixel_boxes)):
                 
                 current_item = gemini_pixel_boxes[i]
@@ -118,34 +109,24 @@ def process_pdf_document(pdf_file_path: str, output_dir: str = "debug_crops"):
                     item["coords"] for j, item in enumerate(gemini_pixel_boxes) if i != j
                 ]
                 
-                # [!!!] 보정 함수 호출 [!!!]
                 final_crop_box = correct_box_with_analysis(
                     pil_img_l,          # Grayscale 이미지
                     initial_coords,     # 보정할 현재 박스
                     other_boxes_coords  # 침범하면 안 되는 다른 박스들
                 )
-
-                # (이전의 버퍼 로직은 이 final_crop_box로 대체됨)
-                # crop_box = (x_min_pixel, y_min_pixel, x_max_pixel, y_max_pixel)
                 
                 try:
-                    # [!!!] 크롭은 원본 컬러 이미지(pil_img)로 수행
                     cropped_q_image = pil_img.crop(final_crop_box)
-                    
-                    output_filename = os.path.join(
-                        output_dir, 
-                        f"page_{page_num}_q_{current_q_box.question_number}_crop.png"
-                    )
-                    crop_output_dir = output_filename
+
+                    # base64 문자열 생성
+                    cropped_image_base64 = encode_pil_image_to_base64(cropped_q_image)
+
+                    # minio
                     in_mem_file = io.BytesIO()
                     cropped_q_image.save(in_mem_file, format="PNG")
                     in_mem_file.seek(0)
-
-                    # minio
-                    base_pdf_name = os.path.basename(pdf_file_path).replace(".pdf", "")
-                    s3_key = f"crops/{base_pdf_name}/page_{page_num}_q_{q_box.question_number}.png"
-
-                    cropped_q_image.save(output_crop_dir)
+                    base_pdf_name = os.path.basename(original_file_name)[0]
+                    s3_key = f"crops/{base_pdf_name}/page_{page_num}_q_{current_q_box.question_number}.png"
 
                     storage_client.put_object(
                         Bucket=config.MINIO_BUCKET,
@@ -155,8 +136,12 @@ def process_pdf_document(pdf_file_path: str, output_dir: str = "debug_crops"):
                         ContentType="image/png"
                     )
 
-                    cropped_images.append(output_crop_dir)
-                    total_crops_saved += 1
+                    yield {
+                        "base64_data": cropped_image_base64,
+                        "s3_key": s3_key,
+                        "question_number": current_q_box.question_number,
+                        "page_number": page_num
+                    }
 
                 except Exception as e:
                     print(f"  문제 {current_q_box.question_number} 크롭 중 오류: {e}")
@@ -167,5 +152,3 @@ def process_pdf_document(pdf_file_path: str, output_dir: str = "debug_crops"):
             pass
 
     print(f"\n--- PDF 처리 완료 ---")
-    print(f"총 {total_crops_saved}개의 크롭 이미지가 '{output_dir}'에 저장되었습니다.")
-    return cropped_images

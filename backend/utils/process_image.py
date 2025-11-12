@@ -161,3 +161,8 @@ def encode_pil_image_to_base64(pil_image: Image.Image) -> str:
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     # Data URL 형식으로 반환
     return f"data:image/png;base64,{img_str}"
+
+def encode_image_from_bytes(image_bytes: bytes):
+    content_type = "image/png"
+    base64_string = base64.b64encode(image_bytes).decode("utf-8")
+    return f"data:{content_type};base64,{base64_string}"

@@ -11,7 +11,7 @@ class Curriculum(BaseModel):
     no_sub_chapter: int = Field(description="중단원 번호")
     sub_chapter: str = Field(description="중단원")
     no_lesson_chapter: int = Field(description="소단원 번호")
-    lession_chapter: str = Field(description="소단원")
+    lesson_chapter: str = Field(description="소단원")
     
 class UnitSuggestions(BaseModel):
     """교과 단원 추천 모델"""
@@ -55,3 +55,30 @@ class MetadataSuggestion(BaseModel):
     keywords: str = Field(description="핵심 키워드 (예: '삼각함수, 로그')")
     content: str = Field(description="파일에서 인식된 문제 텍스트 전체")
 
+from pydantic import BaseModel as PydanticV2BaseModel, Field as PydanticV2Field, model_validator
+
+
+
+class QuestionBox(PydanticV2BaseModel):
+    """
+    개별 문항의 정보와 위치를 담는 스키마.
+    좌표는 (0.0 ~ 1.0) 사이의 상대 좌표입니다.
+    """
+    question_number: str = PydanticV2Field(description="문제 번호 (예: '1', '9번', '서술형 2')")
+    y_min: float = PydanticV2Field(description="영역의 상단(Top) Y 상대 좌표 (0.0~1.0)")
+    x_min: float = PydanticV2Field(description="영역의 좌측(Left) X 상대 좌표 (0.0~1.0)")
+    y_max: float = PydanticV2Field(description="영역의 하단(Bottom) Y 상대 좌표 (0.0~1.0)")
+    x_max: float = PydanticV2Field(description="영역의 우측(Right) X 상대 좌표 (0.0~1.0)")
+
+class QuestionList(PydanticV2BaseModel):
+    questions: List[QuestionBox] = PydanticV2Field(description = "페이지에서 감지된 모든 개별 문항의 리스트")
+
+    @model_validator(mode='before')
+    @classmethod
+    def wrap_list_in_dict(cls, values):
+        """
+        llm이 리스트를 반환한 경우 딕셔너리로 변환
+        """
+        if isinstance(values, list):
+            return {"questions": values}
+        return values

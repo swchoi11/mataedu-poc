@@ -8,9 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 class Problem(Base):
     """개별 문제 테이블"""
     __tablename__ = "problem"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    exam_id: Mapped[int] = mapped_column(Integer)
+    exam_id: Mapped[str] = mapped_column(String)
     
     created_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(), nullable=False)
     grade: Mapped[str] = mapped_column(String, nullable=False)
@@ -52,10 +52,8 @@ class Exam(Base):
     """시험지 테이블"""
 
     __tablename__ = "exam"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    exam_id: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str] = mapped_column(String, nullable=False)
     created_time: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow(),
