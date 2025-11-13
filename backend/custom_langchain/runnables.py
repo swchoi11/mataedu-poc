@@ -7,45 +7,8 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from .models import Curriculum as CurriculumModel, UnitSuggestions, IntentSuggestions, MetadataSuggestion
-
-def fetch_curriculum_data(input: Optional[Any] = None) -> str:
-    """커리큘럼 데이터를 데이터베이스에서 가져오기"""
-    db: Session = next(get_db())
-
-    try:
-        results: List[Curriculum] = db.query(Curriculum).all()
-
-    finally:
-        db.close()
-
-    output_lines = ["학년,과목,대단원번호,대단원,중단원번호,중단원,소단원번호,소단원"]
-
-    for item in results:
-        line = f"{item.grade},{item.subject},{item.no_main_chapter},{item.main_chapter},{item.no_sub_chapter},{item.sub_chapter},{item.no_lesson_chapter},{item.lesson_chapter}"
-
-        output_lines.append(line)
-
-    return "\n".join(output_lines)
-
-def fetch_subject_intent_data(input: Optional[Any] = None) -> str:
-    """성취기준 데이터를 데이터베이스에서 가져오기"""
-    db: Session = next(get_db())
-
-    try:
-        results: List[SubjectUnit] = db.query(SubjectUnit).all()
-
-    finally:
-        db.close()
-
-    output_lines  = ["수행과정, 성취기준, 성취기준해설"]
-
-    for item in results:
-        line = f"{item.sector}, {item.unit}, {item.unit_exp}"
-
-        output_lines.append(line)
-
-    return "\n".join(output_lines)
+from custom_langchain.models import Curriculum as CurriculumModel, UnitSuggestions, IntentSuggestions, MetadataSuggestion
+from database.crud import fetch_curriculum_data, fetch_subject_intent_data
 
 def get_grade_subject_messages(input: dict) -> List[HumanMessage]:
     """메시지 생성 함수 - 체인에서 사용"""

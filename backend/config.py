@@ -17,8 +17,7 @@ class Config:
         self.MINIO_ROOT_USER = os.getenv("MINIO_ROOT_USER")
         self.MINIO_ROOT_PASSWORD = os.getenv("MINIO_ROOT_PASSWORD")
         self.MINIO_BUCKET = os.getenv("MINIO_BUCKET_NAME")
-
-        self.minio_connection_string = "http://minio:9000"
-
+        self.MINIO_HOST = os.getenv("MINIO_HOST")
+        self.minio_connection_string = f"http://{self.MINIO_HOST}:9000"
 
 config = Config()

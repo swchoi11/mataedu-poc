@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Any, List
 from collections import defaultdict
-from database.entities import Problem, Exam
-from custom_langchain.models import Curriculum, UnitSuggestions, IntentSuggestions, MetadataSuggestion
+from database.entities import Problem, Exam, Curriculum, SubjectUnit
+from custom_langchain.models import Curriculum as CurriculumModel, UnitSuggestions, IntentSuggestions, MetadataSuggestion
 from fastapi import HTTPException
-
+from database.database import get_db
 
 def save_problem_analysis(
     db: Session,
@@ -22,7 +22,7 @@ def save_problem_analysis(
     Returns:
         저장된 문제의 ID
     """
-    curriculum: Curriculum = analysis["inferenced_grade"]
+    curriculum: CurriculumModel = analysis["inferenced_grade"]
     suggestions: UnitSuggestions = analysis["unit_suggestions"]
     criterias: IntentSuggestions = analysis["intent_criterias"]
     metadata: Optional[MetadataSuggestion] = analysis.get("metadata")
@@ -57,18 +57,18 @@ def save_problem_analysis(
 
         # 출제 의도/성취기준 1
         sector_1=criterias.sector_1,
-        unit_1=criterias.criteria_1,
-        unit_exp_1=criterias.criteria_explanation_1,
+        criteria_1=criterias.criteria_1,
+        criteria_exp_1=criterias.criteria_explanation_1,
 
         # 출제 의도/성취기준 2 (Optional)
         sector_2=criterias.sector_2 or "",
-        unit_2=criterias.criteria_2 or "",
-        unit_exp_2=criterias.criteria_explanation_2 or "",
+        criteria_2=criterias.criteria_2 or "",
+        criteria_exp_2=criterias.criteria_explanation_2 or "",
 
         # 출제 의도/성취기준 3 (Optional)
         sector_3=criterias.sector_3 or "",
-        unit_3=criterias.criteria_3 or "",
-        unit_exp_3=criterias.criteria_explanation_3 or "",
+        criteria_3=criterias.criteria_3 or "",
+        criteria_exp_3=criterias.criteria_explanation_3 or "",
     )
 
     db.add(problem)
@@ -93,7 +93,7 @@ def save_exam_analysis(
 
     return exam_id
 
-def get_exam_analysis(db: Session, exam_id: str):
+async def get_exam_analysis(db: Session, exam_id: str):
     """
     시험지 ID로 모든 문제를 조회하고 요약 통계를 반환
 
@@ -147,14 +147,14 @@ def get_exam_analysis(db: Session, exam_id: str):
             "keywords": problem.keywords.split(",") if problem.keywords else [],
             "content": problem.content,
             "sector_1": problem.sector_1,
-            "unit_1": problem.unit_1,
-            "unit_exp_1": problem.unit_exp_1,
+            "criteria_1": problem.criteria_1,
+            "criteria_exp_1": problem.criteria_exp_1,
             "sector_2": problem.sector_2,
-            "unit_2": problem.unit_2,
-            "unit_exp_2": problem.unit_exp_2,
+            "criteria_2": problem.criteria_2,
+            "criteria_exp_2": problem.criteria_exp_2,
             "sector_3": problem.sector_3,
-            "unit_3": problem.unit_3,
-            "unit_exp_3": problem.unit_exp_3,
+            "criteria_3": problem.criteria_3,
+            "criteria_exp_3": problem.criteria_exp_3,
             "created_time": problem.created_time.isoformat() if problem.created_time else None
         })
 
@@ -184,3 +184,41 @@ def get_exam_analysis(db: Session, exam_id: str):
         # 3. 개별 문항 목록
         "problem_list": problem_list_response
     }
+
+def fetch_curriculum_data(input: Optional[Any] = None) -> str:
+    """커리큘럼 데이터를 데이터베이스에서 가져오기"""
+    db: Session = next(get_db())
+
+    try:
+        results: List[Curriculum] = db.query(Curriculum).all()
+
+    finally:
+        db.close()
+
+    output_lines = ["학년,과목,대단원번호,대단원,중단원번호,중단원,소단원번호,소단원"]
+
+    for item in results:
+        line = f"{item.grade},{item.subject},{item.no_main_chapter},{item.main_chapter},{item.no_sub_chapter},{item.sub_chapter},{item.no_lesson_chapter},{item.lesson_chapter}"
+
+        output_lines.append(line)
+
+    return "\n".join(output_lines)
+
+def fetch_subject_intent_data(input: Optional[Any] = None) -> str:
+    """성취기준 데이터를 데이터베이스에서 가져오기"""
+    db: Session = next(get_db())
+
+    try:
+        results: List[SubjectUnit] = db.query(SubjectUnit).all()
+
+    finally:
+        db.close()
+
+    output_lines  = ["수행과정, 성취기준, 성취기준해설"]
+
+    for item in results:
+        line = f"{item.sector}, {item.criteria}, {item.criteria_exp}"
+
+        output_lines.append(line)
+
+    return "\n".join(output_lines)

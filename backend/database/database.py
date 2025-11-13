@@ -1,14 +1,14 @@
 from typing import List
 from datetime import datetime
-
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Enum as SQEnum
-
-from sqlalchemy import create_engine, Column, Integer, String
 import sqlalchemy
+from sqlalchemy import Enum as SQEnum
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime
+
 from config import config
+
 
 DATABASE_URL = config.connection_string
 

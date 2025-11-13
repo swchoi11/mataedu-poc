@@ -2,7 +2,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
 
-from .runnables import (
+from config import config
+from custom_langchain.runnables import (
     fetch_curriculum_data,
     fetch_subject_intent_data,
     get_grade_subject_messages,
@@ -11,9 +12,8 @@ from .runnables import (
     get_problem_metadata,
     get_poly
 )
-from .models import Curriculum, UnitSuggestions, IntentSuggestions, MetadataSuggestion, QuestionList
-from config import config
-from utils.process_image import encode_image
+from custom_langchain.models import Curriculum, UnitSuggestions, IntentSuggestions, MetadataSuggestion, QuestionList
+
 llm = ChatGoogleGenerativeAI(
     model = config.GEMINI_MODEL,
     google_api_key = config.GEMINI_API_KEY,
@@ -25,6 +25,7 @@ curriculum_parser = PydanticOutputParser(pydantic_object=Curriculum)
 unit_parser = PydanticOutputParser(pydantic_object=UnitSuggestions)
 intent_parser = PydanticOutputParser(pydantic_object=IntentSuggestions)
 metadata_parser = PydanticOutputParser(pydantic_object=MetadataSuggestion)
+poly_parser = PydanticOutputParser(pydantic_object=QuestionList)
 
 # 1단계: 학년/과목 추출 체인
 grade_extraction = (
@@ -56,7 +57,7 @@ criteria_extraction = (
     wait_exponential_jitter=True
 )
 
-# 4단계: 메타데이터
+# 4단계: 메타데이터 추출 체인
 metadata_extraction = (
     RunnableLambda(get_problem_metadata)
     | llm
@@ -65,23 +66,6 @@ metadata_extraction = (
     stop_after_attempt=3,
     wait_exponential_jitter=True
 )
-
-
-# 이미지 인코딩 함수
-def encode_file_data(input: dict) -> dict:
-    """파일 경로를 받아서 base64 인코딩된 데이터 URL로 변환"""
-    # file_path 또는 file_data에서 경로를 가져옴
-    file_path = input.get("file_path")
-
-    if file_path:
-        # 파일 경로면 인코딩 수행
-        encoded_data = encode_image(file_path)
-        if encoded_data:
-            return {**input, "file_data": encoded_data}
-        else:
-            raise ValueError(f"Failed to encode image from path: {file_path}")
-
-    return input
 
 # 최종 포맷팅 함수
 def format_final_output(input: dict) -> dict:
@@ -94,42 +78,7 @@ def format_final_output(input: dict) -> dict:
         "file_data": input["file_data"]
     }
 
-process_problem_chain = (
-
-    # 0-2. 데이터베이스에서 커리큘럼 및 성취기준 데이터 로드
-    RunnablePassthrough.assign(
-        curriculum_data = RunnableLambda(fetch_curriculum_data),
-        intent_data = RunnableLambda(fetch_subject_intent_data)
-    )
-
-    # 1. 학년/과목 추출
-    | RunnablePassthrough.assign(
-        inferenced_grade = grade_extraction
-    )
-
-    # 2. 교과 단원 추천
-    | RunnablePassthrough.assign(
-        unit_suggestions = curriculum_extraction
-    )
-
-    # 3. 출제 의도/성취기준 추출
-    | RunnablePassthrough.assign(
-        intent_criterias = criteria_extraction
-    )
-
-    | RunnablePassthrough.assign(
-        metadata = metadata_extraction
-    )
-
-    # 4. 최종 포맷팅
-    | RunnableLambda(format_final_output)
-)
-
-
-
-poly_parser = PydanticOutputParser(pydantic_object=QuestionList)
-
-
+# 문제 영역 추출 체인
 poly_extraction = (
     RunnableLambda(get_poly)
     | llm
@@ -138,3 +87,31 @@ poly_extraction = (
     stop_after_attempt=3,
     wait_exponential_jitter=True
 )
+
+
+process_problem_chain = (
+
+    RunnablePassthrough.assign(
+        curriculum_data = RunnableLambda(fetch_curriculum_data),
+        intent_data = RunnableLambda(fetch_subject_intent_data)
+    )
+
+    | RunnablePassthrough.assign(
+        inferenced_grade = grade_extraction
+    )
+
+    | RunnablePassthrough.assign(
+        unit_suggestions = curriculum_extraction
+    )
+
+    | RunnablePassthrough.assign(
+        intent_criterias = criteria_extraction
+    )
+
+    | RunnablePassthrough.assign(
+        metadata = metadata_extraction
+    )
+
+    | RunnableLambda(format_final_output)
+)
+

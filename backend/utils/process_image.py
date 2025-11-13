@@ -4,60 +4,55 @@ import mimetypes
 import pandas as pd
 from enum import Enum
 from PIL import Image
+import io
+from typing import Union
 
-def encode_image(file_path: str) -> str | None:
-    
-    if not os.path.isfile(file_path):
-        print(f"오류: 파일을 찾을 수 없습니다. (경로: {file_path})")
-        return None
-        
-    mimetype, _ = mimetypes.guess_type(file_path)
-
-    if not mimetype:
-        print("파일의 mime 타입을 알 수 없습니다.")
-        return None
-    if "image" not in mimetype:
-        print("이미지 파일이 아닙니다.")
-        return None
-
-    try:
-        with open(file_path, "rb") as f:
-            encode_string = base64.b64encode(f.read()).decode("utf-8")
-
-        return f"data:{mimetype};base64,{encode_string}"
-
-    except Exception as e:
-        print(e)
-
-        return None
-
-def encode_pil_image_to_base64(pil_image: Image.Image) -> str:
+def to_base64_data_url(image_source: Union[str, bytes, Image.Image]) -> str:
     """
-    메모리 상의 PIL 이미지를 Gemini가 인식할 수 있는
-    Base64 Data URL 문자열로 변환합니다.
+    다양한 소스(파일 경로, 바이트, PIL 이미지)를 Base64 데이터 URL로 변환합니다.
+
+    Args:
+        image_source: 변환할 이미지 소스. 
+                      - str: 이미지 파일 경로
+                      - bytes: 이미지의 바이트 데이터
+                      - Image.Image: PIL 이미지 객체
+
+    Returns:
+        Base64 데이터 URL 문자열 (예: "data:image/png;base64,...")
+
+    Raises:
+        ValueError: 지원하지 않는 입력 타입일 경우
+        FileNotFoundError: 파일 경로가 유효하지 않을 경우
     """
-    buffered = io.BytesIO()
-    # 이미지를 PNG 형식으로 메모리 버퍼에 저장
-    pil_image.save(buffered, format="PNG") 
-    # Base64로 인코딩
-    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-    # Data URL 형식으로 반환
-    return f"data:image/png;base64,{img_str}"
-
-
-def dataframe_to_str(file_path: str) -> str | None:
-    if not os.path.isfile(file_path):
-        print(f"오류: 커리큘럼 파일을 찾을 수 없습니다. (경로: {file_path})")
-        return None
+    if isinstance(image_source, Image.Image):
+        # PIL 이미지를 PNG 형식으로 메모리 버퍼에 저장
+        buffered = io.BytesIO()
+        image_source.save(buffered, format="PNG")
+        img_bytes = buffered.getvalue()
+        mimetype = "image/png"
+    elif isinstance(image_source, bytes):
+        # 바이트 데이터 직접 사용
+        img_bytes = image_source
+        # 바이트만으로는 정확한 mimetype을 알기 어려우므로 일반적인 타입 사용
+        mimetype = "image/png" # 혹은 "image/jpeg" 등 상황에 맞게 가정
+    elif isinstance(image_source, str):
+        # 파일 경로에서 읽기
+        if not os.path.isfile(image_source):
+            raise FileNotFoundError(f"오류: 파일을 찾을 수 없습니다. (경로: {image_source})")
         
-    try:
-        data_frame = pd.read_csv(file_path)
-        data_str = data_frame.to_string(index=False, max_rows=100) # 데이터가 너무 길어지는 것을 방지
-        return data_str
-    except Exception as e:
-        print(f"커리큘럼 파일 로드 또는 변환 중 오류: {e}")
-        return None
+        mimetype, _ = mimetypes.guess_type(image_source)
+        if not mimetype or "image" not in mimetype:
+            # mimetype을 신뢰할 수 없을 때를 대비한 fallback
+            mimetype = "image/png" 
 
+        with open(image_source, "rb") as f:
+            img_bytes = f.read()
+    else:
+        raise ValueError("지원하지 않는 이미지 소스 타입입니다. 파일 경로(str), bytes, 또는 PIL.Image.Image를 사용하세요.")
+
+    # Base64 인코딩 및 데이터 URL 형식으로 반환
+    encoded_string = base64.b64encode(img_bytes).decode("utf-8")
+    return f"data:{mimetype};base64,{encoded_string}"
 
 
 def is_line_white(pixel_data, x_start, x_end, y, threshold, width):
@@ -146,23 +141,3 @@ def correct_box_with_analysis(pil_img_l, current_box_coords, other_boxes_coords)
         x_max = new_x_max # 확장
 
     return (x_min, y_min, x_max, y_max)
-
-import io
-
-def encode_pil_image_to_base64(pil_image: Image.Image) -> str:
-    """
-    메모리 상의 PIL 이미지를 Gemini가 인식할 수 있는
-    Base64 Data URL 문자열로 변환합니다.
-    """
-    buffered = io.BytesIO()
-    # 이미지를 PNG 형식으로 메모리 버퍼에 저장
-    pil_image.save(buffered, format="PNG") 
-    # Base64로 인코딩
-    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-    # Data URL 형식으로 반환
-    return f"data:image/png;base64,{img_str}"
-
-def encode_image_from_bytes(image_bytes: bytes):
-    content_type = "image/png"
-    base64_string = base64.b64encode(image_bytes).decode("utf-8")
-    return f"data:{content_type};base64,{base64_string}"

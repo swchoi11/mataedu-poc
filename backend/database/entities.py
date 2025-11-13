@@ -36,18 +36,17 @@ class Problem(Base):
     content: Mapped[str] = mapped_column(String, nullable=False)
     
     sector_1: Mapped[str] = mapped_column(String, nullable=False)
-    unit_1: Mapped[str] = mapped_column(String, nullable=False)
-    unit_exp_1: Mapped[str] = mapped_column(String, nullable=False)
+    criteria_1: Mapped[str] = mapped_column(String, nullable=False)
+    criteria_exp_1: Mapped[str] = mapped_column(String, nullable=False)
 
     sector_2: Mapped[str] = mapped_column(String, nullable=False)
-    unit_2: Mapped[str] = mapped_column(String, nullable=False)
-    unit_exp_2: Mapped[str] = mapped_column(String, nullable=False)
+    criteria_2: Mapped[str] = mapped_column(String, nullable=False)
+    criteria_exp_2: Mapped[str] = mapped_column(String, nullable=False)
 
     sector_3: Mapped[str] = mapped_column(String, nullable=False)
-    unit_3: Mapped[str] = mapped_column(String, nullable=False)
-    unit_exp_3: Mapped[str] = mapped_column(String, nullable=False)
-  
-    
+    criteria_3: Mapped[str] = mapped_column(String, nullable=False)
+    criteria_exp_3: Mapped[str] = mapped_column(String, nullable=False)
+      
 class Exam(Base):
     """시험지 테이블"""
 
@@ -78,6 +77,6 @@ class SubjectUnit(Base):
 
     id = Column(Integer, primary_key=True)
     sector = Column(String, nullable=False)
-    unit = Column(String, nullable=False)
-    unit_exp = Column(String, nullable=False)
+    criteria = Column(String, nullable=False)
+    criteria_exp = Column(String, nullable=False)
 

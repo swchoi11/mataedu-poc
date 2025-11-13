@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS curriculum (
 CREATE TABLE IF NOT EXISTS subject_unit (
     id SERIAL PRIMARY KEY,
     sector VARCHAR NOT NULL,
-    unit VARCHAR NOT NULL,
-    unit_exp VARCHAR NOT NULL
+    criteria VARCHAR NOT NULL,
+    criteria_exp VARCHAR NOT NULL
 );
 
 -- Create indexes
@@ -31,7 +31,7 @@ CSV HEADER
 NULL 'nan';
 
 -- Copy data from the csv file into the subject_unit table
-COPY subject_unit(sector, unit, unit_exp)
+COPY subject_unit(sector, criteria, criteria_exp)
 FROM '/docker-entrypoint-initdb.d/교육과정성취기준.csv'
 DELIMITER ','
 CSV HEADER

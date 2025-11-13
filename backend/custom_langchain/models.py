@@ -57,8 +57,6 @@ class MetadataSuggestion(BaseModel):
 
 from pydantic import BaseModel as PydanticV2BaseModel, Field as PydanticV2Field, model_validator
 
-
-
 class QuestionBox(PydanticV2BaseModel):
     """
     개별 문항의 정보와 위치를 담는 스키마.

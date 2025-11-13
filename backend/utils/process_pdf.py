@@ -27,7 +27,7 @@ try:
 except Exception:
     storage_client.create_bucket(Bucket=config.MINIO_BUCKET)
 
-from utils.process_image import encode_pil_image_to_base64
+from utils.process_image import to_base64_data_url
 from custom_langchain.chains import poly_extraction
 
 from config import config
@@ -72,7 +72,7 @@ def image_generator(pdf_file_path: str, original_file_name: str) -> Generator[di
         print(f"\n--- 페이지 {page_num} 처리 시작 ---")
         
         try:
-            file_data_str = encode_pil_image_to_base64(pil_img)
+            file_data_str = to_base64_data_url(pil_img)
             input_dict = {"file_data": file_data_str}
             
             print(f"페이지 {page_num}: Gemini 호출 중...")
@@ -119,7 +119,7 @@ def image_generator(pdf_file_path: str, original_file_name: str) -> Generator[di
                     cropped_q_image = pil_img.crop(final_crop_box)
 
                     # base64 문자열 생성
-                    cropped_image_base64 = encode_pil_image_to_base64(cropped_q_image)
+                    cropped_image_base64 = to_base64_data_url(cropped_q_image)
 
                     # minio
                     in_mem_file = io.BytesIO()

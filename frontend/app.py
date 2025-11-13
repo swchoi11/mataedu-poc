@@ -1,12 +1,10 @@
-import streamlit as st
-import requests
+import os
 import json
+import requests
 import pandas as pd
+import streamlit as st
 from datetime import datetime
 
-# --- 백엔드 설정 ---
-# Docker 환경에서는 서비스명으로 접근, 로컬 개발시에는 localhost 사용
-import os
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 
 # --- 페이지 기본 설정 ---
@@ -17,18 +15,12 @@ st.set_page_config(
 )
 
 # --- 세션 상태 초기화 ---
-# 'analysis_history' : 사이드바에 표시될 분석 내역 리스트
 if "analysis_history" not in st.session_state:
     st.session_state.analysis_history = []
 
-# 'current_view' : 현재 메인 화면에 표시할 내용 (기본값 'upload')
-# 'upload' 이면 업로드 화면, 다른 값(timestamp)이면 해당 분석 결과
 if "current_view" not in st.session_state:
     st.session_state.current_view = "upload"
 
-# =================================================================
-# 헬퍼 함수 (개별 문제 결과 표시)
-# =================================================================
 def display_problem_results(item):
     """개별 문제 분석 결과를 화면에 표시하는 함수"""
     st.header(f"🧩 개별 문제 분석 결과")
@@ -83,76 +75,111 @@ def display_problem_results(item):
     with st.expander("전체 응답 JSON 보기"):
         st.json(result_data)
 
-# =================================================================
-# 헬퍼 함수 (시험지 결과 표시)
-# =================================================================
 def display_exam_results(item):
     """시험지 분석 결과를 화면에 표시하는 함수"""
     st.header(f"📄 시험지 분석 결과")
     st.markdown(f"**파일명:** {item['file_name']}")
     
+    # 1. exam_id 가져오기 (이전과 동일)
     exam_id = item.get("result", {}).get("exam_id")
+    print(exam_id)
     if not exam_id:
         st.error("시험지 ID를 찾을 수 없습니다.")
         return
 
     st.info(f"요청된 시험지 ID: **{exam_id}**")
 
-    # GET /exam API 호출
+    # 2. GET /exam API 호출 (이전과 동일)
     with st.spinner(f"'{exam_id}' 시험지의 상세 분석 데이터를 조회 중입니다..."):
         try:
             params = {"exam_id": exam_id}
+            # Docker 환경과 로컬 환경을 모두 고려
             response = requests.get(f"{BACKEND_URL}/exam", params=params)
             
             if response.status_code == 200:
                 st.success("상세 분석 데이터 조회 성공!")
                 exam_data = response.json()
                 
-                # --- 데이터 시각화 영역 ---
-                st.subheader("📊 기초 통계 데이터 (예시)")
+                # --- 3. 데이터 시각화 영역 (JSON 구조에 맞게 수정) ---
                 
-                # (백엔드 응답이 확정되면 이 부분을 수정해야 합니다)
-                # (예시 데이터 구조)
-                # exam_data = {
-                #     "total_problems": 25,
-                #     "average_difficulty": 3.5,
-                #     "problems_by_subject": {"수학I": 10, "수학II": 15},
-                #     "problem_list": [
-                #         {"id": "p1", "subject": "수학I", "difficulty": 3},
-                #         {"id": "p2", "subject": "수학II", "difficulty": 4},
-                #     ]
-                # }
-
-                col1, col2 = st.columns(2)
-                col1.metric("총 문항 수", exam_data.get("total_problems", "N/A"))
-                col2.metric("평균 난이도 (예상)", exam_data.get("average_difficulty", "N/A"))
+                st.subheader("📊 기초 통계 데이터")
                 
-                # 예시: 과목별 문항 수 (Bar chart)
-                if "problems_by_subject" in exam_data:
-                    st.subheader("과목별 문항 수")
-                    df_subject = pd.DataFrame(
-                        exam_data["problems_by_subject"].items(), 
-                        columns=["과목", "문항 수"]
-                    )
-                    st.bar_chart(df_subject.set_index("과목"))
+                # 3-1. 요약 통계 (st.metric)
+                col1, col2, col3 = st.columns(3)
+                col1.metric("총 문항 수", f"{exam_data.get('total_problems', 'N/A')} 문제")
+                col2.metric("총 배점", f"{exam_data.get('total_points', 'N/A')} 점")
+                
+                # 'average_points'는 소수점 2자리까지 포맷팅
+                avg_points = exam_data.get('average_points', 0)
+                col3.metric("평균 배점", f"{avg_points:.2f} 점")
+                
+                st.markdown("---")
 
-                # 예시: 문항 리스트 (DataFrame)
+                # 3-2. 집계 데이터 (st.bar_chart)
+                st.subheader("📈 문항 특성 분포")
+                chart_col1, chart_col2, chart_col3 = st.columns(3)
+
+                # 과목별 문항 수
+                with chart_col1:
+                    st.markdown("##### 과목별 문항 수")
+                    if "problems_by_subject" in exam_data and exam_data["problems_by_subject"]:
+                        st.bar_chart(exam_data["problems_by_subject"])
+                    else:
+                        st.caption("데이터 없음")
+
+                # 난이도별 문항 수
+                with chart_col2:
+                    st.markdown("##### 난이도별 문항 수")
+                    if "problems_by_difficulty" in exam_data and exam_data["problems_by_difficulty"]:
+                        st.bar_chart(exam_data["problems_by_difficulty"])
+                    else:
+                        st.caption("데이터 없음")
+                        
+                # 문항 유형별 문항 수
+                with chart_col3:
+                    st.markdown("##### 유형별 문항 수")
+                    if "problems_by_type" in exam_data and exam_data["problems_by_type"]:
+                        st.bar_chart(exam_data["problems_by_type"])
+                    else:
+                        st.caption("데이터 없음")
+
+                st.markdown("---")
+
+                # 3-3. 개별 문항 목록 (st.dataframe)
                 if "problem_list" in exam_data:
-                    st.subheader("개별 문항 상세 (DB 조회 결과)")
+                    st.subheader("📋 개별 문항 상세")
+                    
                     df_problems = pd.DataFrame(exam_data["problem_list"])
-                    st.dataframe(df_problems, use_container_width=True)
+                    
+                    # 모든 컬럼을 보여주면 너무 복잡하므로, 주요 컬럼만 선택
+                    display_columns = [
+                        'problem_id', 
+                        'grade', 
+                        'subject', 
+                        'difficulty', 
+                        'points', 
+                        'item_type', 
+                        'main_chapter_1', 
+                        'keywords'
+                    ]
+                    
+                    # 혹시 모를 오류 방지 (JSON에 키가 없을 수도 있으므로)
+                    existing_columns = [col for col in display_columns if col in df_problems.columns]
+                    
+                    st.dataframe(df_problems[existing_columns], use_container_width=True)
 
+                # 전체 JSON 데이터 (디버깅용 - 이전과 동일)
                 with st.expander("전체 응답 JSON 보기 (GET /exam)"):
                     st.json(exam_data)
                     
+            # 4. 오류 처리 (이전과 동일)
             else:
                 st.error(f"GET /exam 조회 실패 (Status {response.status_code})")
                 st.json(response.json())
         except requests.ConnectionError:
-            st.error("백엔드 서버에 연결할 수 없습니다.")
+            st.error(f"백엔드 서버({BACKEND_URL})에 연결할 수 없습니다.")
         except Exception as e:
-            st.error(f"오류 발생: {e}")
-
+            st.error(f"데이터 처리 중 오류 발생: {e}")
 # =================================================================
 # 헬퍼 함수 (업로드 페이지)
 # =================================================================
@@ -216,7 +243,7 @@ def show_upload_page():
                             target_item["result"] = response.json()
                         else: # 시험지 분석
                             # POST /exam 은 exam_id만 반환함
-                            target_item["result"] = {"exam_id": response.json()}
+                            target_item["result"] = response.json()
                         
                         st.success(f"'{uploaded_file.name}' 분석 요청 성공!")
                         # 분석 완료 후, 해당 결과 페이지로 바로 이동
